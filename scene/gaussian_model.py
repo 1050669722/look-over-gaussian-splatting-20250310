@@ -83,20 +83,20 @@ class GaussianModel:
     
     def restore(self, model_args, training_args):
         (self.active_sh_degree, 
-        self._xyz, 
-        self._features_dc, 
-        self._features_rest,
-        self._scaling, 
-        self._rotation, 
-        self._opacity,
-        self.max_radii2D, 
-        xyz_gradient_accum, 
+        self._xyz, #高斯模型里所有点的三维坐标
+        self._features_dc, #球谐函数（Spherical Harmonics）的直流分量（DC）特征
+        self._features_rest, #球谐函数除直流分量之外的其他特征
+        self._scaling, #每个点的缩放因子，用于控制高斯分布在各个方向上的大小
+        self._rotation, #每个点的旋转参数，用于控制高斯分布的方向
+        self._opacity, #每个点的不透明度
+        self.max_radii2D, #每个点在二维平面上的最大半径
+        xyz_gradient_accum,
         denom,
         opt_dict, 
         self.spatial_lr_scale) = model_args
         self.training_setup(training_args)
-        self.xyz_gradient_accum = xyz_gradient_accum
-        self.denom = denom
+        self.xyz_gradient_accum = xyz_gradient_accum  #位置梯度的累积值，用于在优化过程中更新点的位置
+        self.denom = denom #一个分母值，可能用于计算平均梯度等
         self.optimizer.load_state_dict(opt_dict)
 
     @property
@@ -156,24 +156,27 @@ class GaussianModel:
 
         print("Number of points at initialisation : ", fused_point_cloud.shape[0])
 
-        dist2 = torch.clamp_min(distCUDA2(torch.from_numpy(np.asarray(pcd.points)).float().cuda()), 0.0000001)
-        scales = torch.log(torch.sqrt(dist2))[...,None].repeat(1, 3)
-        rots = torch.zeros((fused_point_cloud.shape[0], 4), device="cuda")
+        dist2 = torch.clamp_min(distCUDA2(torch.from_numpy(np.asarray(pcd.points)).float().cuda()), 0.0000001) #计算点云数据中各点之间的平方距离，并确保这些距离不小于一个极小值
+        scales = torch.log(torch.sqrt(dist2))[...,None].repeat(1, 3) #取对数，加维度，重复
+        rots = torch.zeros((fused_point_cloud.shape[0], 4), device="cuda") #四元数表示旋转
         rots[:, 0] = 1
 
+        # 函数对初始不透明度进行激活，初始不透明度设置为 0.1
         opacities = self.inverse_opacity_activation(0.1 * torch.ones((fused_point_cloud.shape[0], 1), dtype=torch.float, device="cuda"))
 
+        # 将点云的位置、特征、缩放、旋转和不透明度等参数定义为可训练的 nn.Parameter 对象，以便在训练过程中进行优化
         self._xyz = nn.Parameter(fused_point_cloud.requires_grad_(True))
         self._features_dc = nn.Parameter(features[:,:,0:1].transpose(1, 2).contiguous().requires_grad_(True))
         self._features_rest = nn.Parameter(features[:,:,1:].transpose(1, 2).contiguous().requires_grad_(True))
         self._scaling = nn.Parameter(scales.requires_grad_(True))
         self._rotation = nn.Parameter(rots.requires_grad_(True))
         self._opacity = nn.Parameter(opacities.requires_grad_(True))
+
         self.max_radii2D = torch.zeros((self.get_xyz.shape[0]), device="cuda")
         self.exposure_mapping = {cam_info.image_name: idx for idx, cam_info in enumerate(cam_infos)}
         self.pretrained_exposures = None
         exposure = torch.eye(3, 4, device="cuda")[None].repeat(len(cam_infos), 1, 1)
-        self._exposure = nn.Parameter(exposure.requires_grad_(True))
+        self._exposure = nn.Parameter(exposure.requires_grad_(True)) #将曝光矩阵定义为可训练的 nn.Parameter 对象
 
     def training_setup(self, training_args):
         self.percent_dense = training_args.percent_dense
@@ -200,6 +203,7 @@ class GaussianModel:
 
         self.exposure_optimizer = torch.optim.Adam([self._exposure])
 
+        # 位置学习率和曝光学习率是动态的？
         self.xyz_scheduler_args = get_expon_lr_func(lr_init=training_args.position_lr_init*self.spatial_lr_scale,
                                                     lr_final=training_args.position_lr_final*self.spatial_lr_scale,
                                                     lr_delay_mult=training_args.position_lr_delay_mult,

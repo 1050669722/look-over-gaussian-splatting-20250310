@@ -17,6 +17,14 @@ import cv2
 
 WARNED = False
 
+"""
+tar -cvf 目标文件名.tar 源目录路径
+for file in *; do
+    if [ -f "$file" ]; then
+        mv "$file" "0$file"
+    fi
+done
+"""
 def loadCam(args, id, cam_info, resolution_scale, is_nerf_synthetic, is_test_dataset):
     image = Image.open(cam_info.image_path)
 
@@ -60,6 +68,7 @@ def loadCam(args, id, cam_info, resolution_scale, is_nerf_synthetic, is_test_dat
         scale = float(global_down) * float(resolution_scale)
         resolution = (int(orig_w / scale), int(orig_h / scale))
 
+    # 将相机转换为了nn.Module
     return Camera(resolution, colmap_id=cam_info.uid, R=cam_info.R, T=cam_info.T, 
                   FoVx=cam_info.FovX, FoVy=cam_info.FovY, depth_params=cam_info.depth_params,
                   image=image, invdepthmap=invdepthmap,

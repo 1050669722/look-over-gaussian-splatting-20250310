@@ -200,7 +200,7 @@ def readColmapSceneInfo(path, images, depths, eval, train_test_exp, llffhold=8):
     train_cam_infos = [c for c in cam_infos if train_test_exp or not c.is_test]
     test_cam_infos = [c for c in cam_infos if c.is_test]
 
-    nerf_normalization = getNerfppNorm(train_cam_infos)
+    nerf_normalization = getNerfppNorm(train_cam_infos) #相机的平均位置 和 位置中与平均位置的最大值
 
     ply_path = os.path.join(path, "sparse/0/points3D.ply")
     bin_path = os.path.join(path, "sparse/0/points3D.bin")
@@ -213,7 +213,7 @@ def readColmapSceneInfo(path, images, depths, eval, train_test_exp, llffhold=8):
             xyz, rgb, _ = read_points3D_text(txt_path)
         storePly(ply_path, xyz, rgb)
     try:
-        pcd = fetchPly(ply_path)
+        pcd = fetchPly(ply_path) # 点云：位置、颜色、法线
     except:
         pcd = None
 
