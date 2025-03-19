@@ -57,10 +57,10 @@ class Scene:
                 camlist.extend(scene_info.test_cameras)
             if scene_info.train_cameras:
                 camlist.extend(scene_info.train_cameras)
-            for id, cam in enumerate(camlist):
-                json_cams.append(camera_to_JSON(id, cam))
+            for id, cam in enumerate(camlist): #这里的id并不是数据集中的id，而是camlist的索引
+                json_cams.append(camera_to_JSON(id, cam)) #添加这样一个条目 #包含，图像的名字，相机的信息，一个点从世界坐标系转换到相机坐标系所需要的位移和旋转
             with open(os.path.join(self.model_path, "cameras.json"), 'w') as file:
-                json.dump(json_cams, file)
+                json.dump(json_cams, file) #TODO:为什么要进行序列化？
 
         if shuffle:
             random.shuffle(scene_info.train_cameras)  # Multi-res consistent random shuffling
@@ -80,7 +80,7 @@ class Scene:
                                                            "iteration_" + str(self.loaded_iter),
                                                            "point_cloud.ply"), args.train_test_exp)
         else:
-            self.gaussians.create_from_pcd(scene_info.point_cloud, scene_info.train_cameras, self.cameras_extent)
+            self.gaussians.create_from_pcd(scene_info.point_cloud, scene_info.train_cameras, self.cameras_extent) #点云初始化高斯函数
 
     def save(self, iteration):
         point_cloud_path = os.path.join(self.model_path, "point_cloud/iteration_{}".format(iteration))

@@ -112,7 +112,7 @@ def readColmapCameras(cam_extrinsics, cam_intrinsics, depths_params, images_fold
         cam_info = CameraInfo(uid=uid, R=R, T=T, FovY=FovY, FovX=FovX, depth_params=depth_params,
                               image_path=image_path, image_name=image_name, depth_path=depth_path,
                               width=width, height=height, is_test=image_name in test_cam_names_list)
-        cam_infos.append(cam_info)
+        cam_infos.append(cam_info) # 每个图像一个cam_info，外参、内参、图像对应起来
 
     sys.stdout.write('\n')
     return cam_infos
@@ -200,7 +200,7 @@ def readColmapSceneInfo(path, images, depths, eval, train_test_exp, llffhold=8):
     train_cam_infos = [c for c in cam_infos if train_test_exp or not c.is_test]
     test_cam_infos = [c for c in cam_infos if c.is_test]
 
-    nerf_normalization = getNerfppNorm(train_cam_infos) #相机的平均位置 和 位置中与平均位置的最大值
+    nerf_normalization = getNerfppNorm(train_cam_infos) #相机的平均位置 和 位置中与平均位置的最大值 #TODO: 这里取得归一化值的作用是什么？
 
     ply_path = os.path.join(path, "sparse/0/points3D.ply")
     bin_path = os.path.join(path, "sparse/0/points3D.bin")
@@ -213,7 +213,7 @@ def readColmapSceneInfo(path, images, depths, eval, train_test_exp, llffhold=8):
             xyz, rgb, _ = read_points3D_text(txt_path)
         storePly(ply_path, xyz, rgb)
     try:
-        pcd = fetchPly(ply_path) # 点云：位置、颜色、法线
+        pcd = fetchPly(ply_path) # 点云：位置、颜色、法线；初始化？
     except:
         pcd = None
 
@@ -222,7 +222,7 @@ def readColmapSceneInfo(path, images, depths, eval, train_test_exp, llffhold=8):
                            test_cameras=test_cam_infos,
                            nerf_normalization=nerf_normalization,
                            ply_path=ply_path,
-                           is_nerf_synthetic=False)
+                           is_nerf_synthetic=False) #cam_infos绑定在了scene_info上
     return scene_info
 
 def readCamerasFromTransforms(path, transformsfile, depths_folder, white_background, is_test, extension=".png"):
